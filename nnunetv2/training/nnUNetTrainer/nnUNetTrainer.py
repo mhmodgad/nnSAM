@@ -58,6 +58,7 @@ from torch import distributed as dist
 from torch.cuda import device_count
 from torch.cuda.amp import GradScaler
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 
 class nnUNetTrainer(object):
@@ -445,10 +446,14 @@ class nnUNetTrainer(object):
                                    self.configuration_manager, '\n', add_timestamp=False)
             self.print_to_log_file('These are the global plan.json settings:\n', dct, '\n', add_timestamp=False)
 
+    # def configure_optimizers(self):
+    #     optimizer = torch.optim.SGD(self.network.parameters(), self.initial_lr, weight_decay=self.weight_decay,
+    #                                 momentum=0.99, nesterov=True)
+    #     lr_scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs)
+    #     return optimizer, lr_scheduler
     def configure_optimizers(self):
-        optimizer = torch.optim.SGD(self.network.parameters(), self.initial_lr, weight_decay=self.weight_decay,
-                                    momentum=0.99, nesterov=True)
-        lr_scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs)
+        optimizer = torch.optim.Adam(self.network.parameters(), lr=self.initial_lr, weight_decay=self.weight_decay)
+        lr_scheduler = CosineAnnealingLR(optimizer, T_max=self.num_epochs)
         return optimizer, lr_scheduler
 
     def plot_network_architecture(self):
