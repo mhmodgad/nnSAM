@@ -60,6 +60,42 @@ from torch.cuda.amp import GradScaler
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
+import torch.optim.lr_scheduler as lr_scheduler
+
+class CustomLRMonitor(lr_scheduler._LRScheduler):
+    def __init__(self, optimizer, factor=0.1, patience=1, verbose=False):
+        self.factor = factor
+        self.patience = patience
+        self.verbose = verbose
+        self.val_accuracy_history = []
+        self.best_val_accuracy = float('-inf')
+        self.counter = 0
+        super(CustomLRMonitor, self).__init__(optimizer)
+
+    def step(self, val_accuracy, epoch=None):
+        if epoch is None:
+            epoch = self.last_epoch + 1
+
+        if val_accuracy is not None:  # Check if val_accuracy is not None
+            self.val_accuracy_history.append(val_accuracy)
+
+            if val_accuracy > self.best_val_accuracy:
+                self.best_val_accuracy = val_accuracy
+                self.counter = 0
+            else:
+                self.counter += 1
+
+            if self.counter >= self.patience:
+                self.counter = 0
+                old_lr = self.optimizer.param_groups[0]['lr']
+                new_lr = old_lr * self.factor
+                if self.verbose:
+                    print(f'Reducing learning rate from {old_lr} to {new_lr}')
+                for param_group in self.optimizer.param_groups:
+                    param_group['lr'] = new_lr
+
+        super(CustomLRMonitor, self).step(epoch)
+
 
 class nnUNetTrainer(object):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
@@ -448,11 +484,12 @@ class nnUNetTrainer(object):
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.network.parameters(), self.initial_lr, weight_decay=self.weight_decay,
-                                    momentum=0.99, nesterov=True)
+                                    momentum=0.9, nesterov=True)
     #     lr_scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs)
     #     return optimizer, lr_scheduler
         # optimizer = torch.optim.Adam(self.network.parameters(), lr=self.initial_lr, weight_decay=self.weight_decay)
-        lr_scheduler = CosineAnnealingLR(optimizer, T_max=self.num_epochs)
+        # lr_scheduler = CosineAnnealingLR(optimizer, T_max=self.num_epochs)
+        lr_scheduler = CustomLRMonitor(optimizer)
         return optimizer, lr_scheduler
 
     def plot_network_architecture(self):
@@ -826,7 +863,9 @@ class nnUNetTrainer(object):
 
     def on_train_epoch_start(self):
         self.network.train()
-        self.lr_scheduler.step(self.current_epoch)
+        # self.lr_scheduler.step(self.current_epoch)
+        self.lr_scheduler.step(np.round(self._best_ema, decimals=4), self.current_epoch)
+
         self.print_to_log_file('')
         self.print_to_log_file(f'Epoch {self.current_epoch}')
         self.print_to_log_file(
