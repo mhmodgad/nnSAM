@@ -72,11 +72,11 @@ class CustomLRMonitor(lr_scheduler._LRScheduler):
         self.counter = 0
         super(CustomLRMonitor, self).__init__(optimizer)
 
-    def step(self, val_accuracy=None, epoch=None):  # Provide a default value for val_accuracy
+    def step(self, val_accuracy=None, epoch=None):
         if epoch is None:
             epoch = self.last_epoch + 1
 
-        if val_accuracy is not None:  # Check if val_accuracy is not None
+        if val_accuracy is not None:
             self.val_accuracy_history.append(val_accuracy)
 
             if val_accuracy > self.best_val_accuracy:
@@ -95,6 +95,9 @@ class CustomLRMonitor(lr_scheduler._LRScheduler):
                     param_group['lr'] = new_lr
 
         super(CustomLRMonitor, self).step(epoch)
+
+    def get_lr(self):
+        return self.optimizer.param_groups[0]['lr']
 
 
 
