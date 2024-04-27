@@ -496,7 +496,7 @@ class nnUNetTrainer(object):
     #     return optimizer, lr_scheduler
         # optimizer = torch.optim.Adam(self.network.parameters(), lr=self.initial_lr, weight_decay=self.weight_decay)
         # lr_scheduler = CosineAnnealingLR(optimizer, T_max=self.num_epochs)
-        lr_scheduler = CustomLRMonitor(optimizer)
+        lr_scheduler = CustomLRScheduler(optimizer)
         return optimizer, lr_scheduler
 
     def plot_network_architecture(self):
