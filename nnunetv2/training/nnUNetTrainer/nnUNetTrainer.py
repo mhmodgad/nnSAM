@@ -871,7 +871,12 @@ class nnUNetTrainer(object):
     def on_train_epoch_start(self):
         self.network.train()
         # self.lr_scheduler.step(self.current_epoch)
-        self.lr_scheduler.step(np.round(self._best_ema, decimals=4), self.current_epoch)
+        # self.lr_scheduler.step(np.round(self._best_ema, decimals=4), self.current_epoch)
+        if self._best_ema is None:
+            self.lr_scheduler.step(None, self.current_epoch)
+        else:
+            self.lr_scheduler.step(np.round(self._best_ema, decimals=4), self.current_epoch)
+
 
         self.print_to_log_file('')
         self.print_to_log_file(f'Epoch {self.current_epoch}')
