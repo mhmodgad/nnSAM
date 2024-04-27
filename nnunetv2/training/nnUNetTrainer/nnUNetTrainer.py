@@ -61,23 +61,25 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 import torch.optim.lr_scheduler as lr_scheduler
+from torch.optim.lr_scheduler import _LRScheduler
 
-class CustomLRMonitor(lr_scheduler._LRScheduler):
-    def __init__(self, optimizer, factor=0.1, patience=1, verbose=False):
+class CustomLRScheduler(_LRScheduler):
+    def __init__(self, optimizer, factor: float = 0.1, patience: int = 1, verbose: bool = False):
+        self.optimizer = optimizer
         self.factor = factor
         self.patience = patience
         self.verbose = verbose
         self.val_accuracy_history = []
         self.best_val_accuracy = float('-inf')
         self.counter = 0
-        super(CustomLRMonitor, self).__init__(optimizer)
+        super().__init__(optimizer)
 
-    def step(self, epoch=None):
+    def step(self, val_accuracy=None, epoch=None):
         if epoch is None:
             epoch = self.last_epoch + 1
 
-        if len(self.val_accuracy_history) > 0:
-            val_accuracy = self.val_accuracy_history[-1]
+        if val_accuracy is not None:
+            self.val_accuracy_history.append(val_accuracy)
 
             if val_accuracy > self.best_val_accuracy:
                 self.best_val_accuracy = val_accuracy
@@ -97,7 +99,8 @@ class CustomLRMonitor(lr_scheduler._LRScheduler):
         super().step(epoch)
 
     def get_lr(self):
-        return self.optimizer.param_groups[0]['lr']
+        return [param_group['lr'] for param_group in self.optimizer.param_groups]
+
 
 
 
