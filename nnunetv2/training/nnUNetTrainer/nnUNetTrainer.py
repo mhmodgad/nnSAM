@@ -87,7 +87,7 @@ class CustomLRScheduler(_LRScheduler):
             else:
                 self.counter += 1
 
-            if epoch != 0 and epoch % 10 == 0 and self.counter >= self.patience:
+            if (epoch != 0 and epoch % 10 == 0) or self.counter >= self.patience:
                 self.counter = 0
                 old_lr = self.optimizer.param_groups[0]['lr']
                 new_lr = old_lr * self.factor
